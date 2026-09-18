@@ -33,6 +33,7 @@ select:focus, button:focus-visible, .intersection:focus-visible { outline: 3px s
 .status.error { color: #b42318; }
 .board { --cells: 15; width: min(660px, 100%); aspect-ratio: 1; display: grid; grid-template-columns: repeat(var(--cells), 1fr); grid-template-rows: repeat(var(--cells), 1fr); padding: 2.5%; border: 8px solid #8d572f; border-radius: 8px; background: #d7a75f; box-shadow: inset 0 0 0 2px #e5bd78, 0 12px 28px rgba(58,35,16,.22); }
 .intersection { position: relative; border: 0; padding: 0; background-color: transparent; background-image: linear-gradient(90deg, transparent calc(50% - .5px), rgba(83,47,19,.72) calc(50% - .5px), rgba(83,47,19,.72) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(transparent calc(50% - .5px), rgba(83,47,19,.72) calc(50% - .5px), rgba(83,47,19,.72) calc(50% + .5px), transparent calc(50% + .5px)); cursor: pointer; }
+.intersection.not-allowed { z-index: 3; cursor: not-allowed; border-radius: 4px; background-color: rgba(190, 35, 35, .2); box-shadow: inset 0 0 0 3px rgba(190, 35, 35, .88), 0 0 8px rgba(190, 35, 35, .55); }
 .intersection::after { content: ""; position: absolute; width: 76%; aspect-ratio: 1; left: 50%; top: 50%; translate: -50% -50%; border-radius: 50%; opacity: 0; transform: scale(.5); transition: opacity .12s, transform .12s; }
 .intersection.black::after, .intersection.white::after { opacity: 1; transform: scale(1); }
 .intersection.black::after { background: radial-gradient(circle at 33% 28%, #59636a 0, #182126 45%, #050809 100%); box-shadow: 1px 3px 5px rgba(0,0,0,.45); }
@@ -62,4 +63,5 @@ select:focus, button:focus-visible, .intersection:focus-visible { outline: 3px s
   .controls { grid-template-columns: 1fr; }
   .controls .primary, .score { grid-column: auto; }
   .board { border-width: 5px; }
+  .intersection.not-allowed { box-shadow: inset 0 0 0 2px rgba(190, 35, 35, .9), 0 0 6px rgba(190, 35, 35, .5); }
 }
