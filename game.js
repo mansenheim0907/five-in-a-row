@@ -41,11 +41,12 @@ const translations = {
     boardFull: "Brädet är fullt utan någon vinnare.",
     renjuHint: "Renju: svart börjar i mitten och får inte göra överlinje, dubbel-trea eller dubbel-fyra.",
     freeHint: "Fritt spel: placera fem eller fler stenar i rad – vågrätt, lodrätt eller diagonalt.",
-    keepColors: "Behåll färger", swapColors: "Byt färger", offerTen: "Föreslå 10 femtedrag",
-    openingDecision: "{player}: vill du behålla eller byta färg?", computerDecision: "Datorn väljer färg…",
+    keepColors: "Behåll färger", swapColors: "Byt färger", offerTen: "Föreslå 10 positioner",
+    continueAs: "Fortsätt som {color}", takeOver: "Ta över {color}",
+    openingDecision: "Öppningsval efter drag {move} av 6 – {player} väljer färg.", computerDecision: "Datorn väljer färg…",
     openingZone: "Öppningsdrag {move} måste placeras inom centrumområdet {size}×{size}.",
-    offerStatus: "Placera förslag {count} av 10 för svarts femte drag.",
-    chooseProposal: "Välj ett av de markerade förslagen som svarts femte drag.",
+    offerStatus: "Markera position {count} av 10. Vit väljer sedan vilken som blir svarts femte sten.",
+    chooseProposal: "Välj en markerad position. Endast den blir svarts femte sten; de andra försvinner.",
     proposalOnly: "Välj en av de tio markerade positionerna.",
     symmetricProposal: "Förslaget är symmetriskt med ett tidigare förslag. Välj en annan position.",
     playerLabel: "Spelare {seat}", yourTurnColor: "Din tur – du spelar {color}",
@@ -70,11 +71,12 @@ const translations = {
     boardFull: "The board is full with no winner.",
     renjuHint: "Renju: Black starts in the centre and may not make an overline, double three or double four.",
     freeHint: "Freestyle: place five or more stones in a row – horizontally, vertically or diagonally.",
-    keepColors: "Keep colours", swapColors: "Swap colours", offerTen: "Offer 10 fifth moves",
-    openingDecision: "{player}: keep or swap colours?", computerDecision: "The computer is choosing colours…",
+    keepColors: "Keep colours", swapColors: "Swap colours", offerTen: "Propose 10 positions",
+    continueAs: "Continue as {color}", takeOver: "Take over {color}",
+    openingDecision: "Opening choice after move {move} of 6 – {player} chooses a colour.", computerDecision: "The computer is choosing colours…",
     openingZone: "Opening move {move} must be placed inside the central {size}×{size} area.",
-    offerStatus: "Place proposal {count} of 10 for Black's fifth move.",
-    chooseProposal: "Choose one of the marked proposals as Black's fifth move.",
+    offerStatus: "Mark position {count} of 10. White then chooses which becomes Black's fifth stone.",
+    chooseProposal: "Choose one marked position. Only that one becomes Black's fifth stone; the others disappear.",
     proposalOnly: "Choose one of the ten marked positions.",
     symmetricProposal: "That proposal is symmetrical to an earlier one. Choose another position.",
     playerLabel: "Player {seat}", yourTurnColor: "Your turn – you are {color}",
@@ -278,8 +280,12 @@ function updateOpeningPanel() {
   }
   openingPanel.hidden = isComputerSeat(decisionSeat);
   offerTenButton.hidden = decisionAfterMove !== 4;
-  const player = modeElement.value === "local" ? t("playerLabel", { seat: decisionSeat }) : t("yourTurnColor", { color: playerName(colorForSeat(decisionSeat)) });
-  openingMessage.textContent = t("openingDecision", { player });
+  const currentColor = colorForSeat(decisionSeat);
+  const otherColor = currentColor === BLACK ? WHITE : BLACK;
+  const player = modeElement.value === "local" ? t("playerLabel", { seat: decisionSeat }) : t("yourTurnColor", { color: playerName(currentColor) });
+  openingMessage.textContent = t("openingDecision", { move: decisionAfterMove, player });
+  keepColorsButton.textContent = t("continueAs", { color: playerName(currentColor) });
+  swapColorsButton.textContent = t("takeOver", { color: playerName(otherColor) });
 }
 
 function addProposedMove(row, col) {
@@ -598,6 +604,7 @@ function updateStatus() {
   }
   if (openingState === "decision") {
     statusElement.textContent = isComputerSeat(decisionSeat) ? t("computerDecision") : t("openingDecision", {
+      move: decisionAfterMove,
       player: modeElement.value === "local" ? t("playerLabel", { seat: decisionSeat }) : t("yourTurnColor", { color: playerName(colorForSeat(decisionSeat)) })
     });
     return;
