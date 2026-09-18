@@ -65,6 +65,7 @@ let computerThinking;
 let moveCount;
 let lastMove;
 let statusTimer;
+let statusMode = "normal";
 let language = localStorage.getItem("five-language") === "en" ? "en" : "sv";
 let scores = { black: 0, white: 0, draw: 0 };
 
@@ -109,6 +110,10 @@ function renderBoard() {
       cell.setAttribute("role", "gridcell");
       cell.setAttribute("aria-label", cellAriaLabel(row, col));
       cell.addEventListener("click", handleCellClick);
+      cell.addEventListener("pointerenter", handleCellIntent);
+      cell.addEventListener("pointerleave", clearCellIntent);
+      cell.addEventListener("focus", handleCellIntent);
+      cell.addEventListener("blur", clearCellIntent);
       fragment.append(cell);
     }
   }
@@ -121,7 +126,7 @@ function handleCellClick(event) {
   const col = Number(event.currentTarget.dataset.col);
   const problem = validateMove(row, col, currentPlayer);
   if (problem) {
-    showMoveError(problem);
+    showMoveError(problem, true);
     return;
   }
   placeStone(row, col, currentPlayer);
@@ -130,6 +135,22 @@ function handleCellClick(event) {
   currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
   updateStatus();
   if (modeElement.value === "computer" && currentPlayer === WHITE) computerMove();
+}
+
+function handleCellIntent(event) {
+  if (gameOver || computerThinking) return;
+  const cell = event.currentTarget;
+  const row = Number(cell.dataset.row);
+  const col = Number(cell.dataset.col);
+  const problem = validateMove(row, col, currentPlayer);
+  cell.classList.toggle("not-allowed", Boolean(problem));
+  if (problem) showMoveError(problem, false);
+  else if (statusMode === "intent") clearIntentStatus();
+}
+
+function clearCellIntent(event) {
+  event.currentTarget.classList.remove("not-allowed");
+  if (statusMode === "intent") clearIntentStatus();
 }
 
 function validateMove(row, col, player) {
@@ -343,14 +364,19 @@ function findWinningLine(row, col) {
   return [];
 }
 
-function showMoveError(messageKey) {
+function showMoveError(messageKey, persistent) {
   window.clearTimeout(statusTimer);
   statusElement.textContent = t(messageKey);
   statusElement.classList.add("error");
-  statusTimer = window.setTimeout(() => {
-    statusElement.classList.remove("error");
-    updateStatus();
-  }, 2600);
+  statusMode = persistent ? "click" : "intent";
+  if (persistent) statusTimer = window.setTimeout(clearIntentStatus, 2600);
+}
+
+function clearIntentStatus() {
+  window.clearTimeout(statusTimer);
+  statusMode = "normal";
+  statusElement.classList.remove("error");
+  updateStatus();
 }
 
 function showResult(winner) {
