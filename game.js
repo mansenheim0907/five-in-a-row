@@ -21,12 +21,22 @@ const openingMessage = document.querySelector("#opening-message");
 const keepColorsButton = document.querySelector("#keep-colors");
 const swapColorsButton = document.querySelector("#swap-colors");
 const offerTenButton = document.querySelector("#offer-ten");
+const onlinePanel = document.querySelector("#online-panel");
+const onlineLobby = document.querySelector("#online-lobby");
+const onlineRoom = document.querySelector("#online-room");
+const onlineNameInput = document.querySelector("#online-name");
+const onlineCodeInput = document.querySelector("#online-code");
+const onlinePlayers = document.querySelector("#online-players");
+const roomCodeButton = document.querySelector("#copy-code");
+
+const SUPABASE_URL = "https://vihncukhitijhrvgvonw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_cekFLm639kSdmlifG7YFWw_O-EFse4C";
 
 const translations = {
   sv: {
     pageTitle: "Fem i rad", eyebrow: "KLASSISKT BRÄDSPEL", title: "Fem i rad",
     subtitle: "Utmana datorn eller spela tillsammans på samma skärm.", gameArea: "Spelområde",
-    language: "Språk", gameMode: "Spelläge", computer: "Mot datorn", local: "Två spelare",
+    language: "Språk", gameMode: "Spelläge", computer: "Mot datorn", local: "Två spelare", online: "Spela online",
     difficulty: "Svårighetsgrad", easy: "Lätt", medium: "Medel", hard: "Svår",
     rules: "Regler", freeRules: "Fritt fem i rad", newGame: "Nytt spel",
     sessionScore: "Resultat denna session", black: "Svart", white: "Vit", draw: "Oavgjort",
@@ -51,12 +61,19 @@ const translations = {
     symmetricProposal: "Förslaget är symmetriskt med ett tidigare förslag. Välj en annan position.",
     playerLabel: "Spelare {seat}", yourTurnColor: "Din tur – du spelar {color}",
     computerTurnColor: "Datorns tur – {color}", localTurn: "Spelare {seat} – {color}s tur",
-    renjuHint: "Renju med Taraguchi-10: följ öppningsområdena och välj om färgerna ska bytas. Svart får inte göra överlinje, dubbel-trea eller dubbel-fyra."
+    renjuHint: "Renju med Taraguchi-10: följ öppningsområdena och välj om färgerna ska bytas. Svart får inte göra överlinje, dubbel-trea eller dubbel-fyra.",
+    yourName: "Ditt namn", namePlaceholder: "Spelare", createMatch: "Skapa match", or: "eller",
+    matchCode: "Matchkod", joinMatch: "Gå med", leaveMatch: "Lämna matchen", copyCode: "Kopiera matchkod",
+    copied: "Matchkoden är kopierad.", onlineWaiting: "Väntar på motspelare – dela koden {code}",
+    onlineYourTurn: "Din tur – du spelar {color}", onlineOpponentTurn: "{name}s tur – du spelar {color}",
+    onlinePlayers: "{black} (svart) mot {white} (vit)", onlineError: "Det gick inte att ansluta. Försök igen.",
+    invalidCode: "Ange en matchkod med 6 tecken.", onlineBusy: "Ansluter…", onlineOnlyFree: "Onlineläget använder fritt fem-i-rad.",
+    notYourTurn: "Det är inte din tur.", waitingForOpponent: "Vänta tills en motspelare har anslutit.", opponentLeft: "Motspelaren lämnade matchen."
   },
   en: {
     pageTitle: "Five in a Row", eyebrow: "CLASSIC BOARD GAME", title: "Five in a Row",
     subtitle: "Challenge the computer or play together on the same screen.", gameArea: "Game area",
-    language: "Language", gameMode: "Game mode", computer: "Vs computer", local: "Two players",
+    language: "Language", gameMode: "Game mode", computer: "Vs computer", local: "Two players", online: "Play online",
     difficulty: "Difficulty", easy: "Easy", medium: "Medium", hard: "Hard",
     rules: "Rules", freeRules: "Freestyle five in a row", newGame: "New game",
     sessionScore: "Score this session", black: "Black", white: "White", draw: "Draw",
@@ -81,7 +98,14 @@ const translations = {
     symmetricProposal: "That proposal is symmetrical to an earlier one. Choose another position.",
     playerLabel: "Player {seat}", yourTurnColor: "Your turn – you are {color}",
     computerTurnColor: "Computer's turn – {color}", localTurn: "Player {seat} – {color}'s turn",
-    renjuHint: "Renju with Taraguchi-10: follow the opening zones and choose whether to swap colours. Black may not make an overline, double three or double four."
+    renjuHint: "Renju with Taraguchi-10: follow the opening zones and choose whether to swap colours. Black may not make an overline, double three or double four.",
+    yourName: "Your name", namePlaceholder: "Player", createMatch: "Create match", or: "or",
+    matchCode: "Match code", joinMatch: "Join", leaveMatch: "Leave match", copyCode: "Copy match code",
+    copied: "Match code copied.", onlineWaiting: "Waiting for an opponent – share code {code}",
+    onlineYourTurn: "Your turn – you are {color}", onlineOpponentTurn: "{name}'s turn – you are {color}",
+    onlinePlayers: "{black} (Black) vs {white} (White)", onlineError: "Could not connect. Please try again.",
+    invalidCode: "Enter a 6-character match code.", onlineBusy: "Connecting…", onlineOnlyFree: "Online mode uses freestyle five in a row.",
+    notYourTurn: "It is not your turn.", waitingForOpponent: "Wait for an opponent to join.", opponentLeft: "Your opponent left the match."
   }
 };
 
@@ -100,6 +124,11 @@ let decisionSeat;
 let proposalMoves;
 let language = localStorage.getItem("five-language") === "en" ? "en" : "sv";
 let scores = { black: 0, white: 0, draw: 0 };
+let onlineSession = null;
+let onlineState = null;
+let onlinePollTimer = 0;
+let onlineRequestPending = false;
+let onlineResultShown = false;
 
 function t(key, values = {}) {
   return Object.entries(values).reduce((text, [name, value]) => text.replace(`{${name}}`, value), translations[language][key]);
@@ -110,10 +139,18 @@ function applyLanguage() {
   document.title = t("pageTitle");
   document.querySelectorAll("[data-i18n]").forEach(element => { element.textContent = t(element.dataset.i18n); });
   document.querySelectorAll("[data-i18n-aria-label]").forEach(element => { element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel)); });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(element => { element.placeholder = t(element.dataset.i18nPlaceholder); });
+  roomCodeButton.title = t("copyCode");
   updateBoardAriaLabels();
   updateRuleHint();
   updateOpeningPanel();
   updateStatus();
+  if (onlineState) {
+    onlinePlayers.textContent = t("onlinePlayers", {
+      black: onlineState.hostName,
+      white: onlineState.guestName || "…"
+    });
+  }
 }
 
 function resetGame() {
@@ -163,6 +200,10 @@ function handleCellClick(event) {
   if (gameOver || computerThinking) return;
   const row = Number(event.currentTarget.dataset.row);
   const col = Number(event.currentTarget.dataset.col);
+  if (modeElement.value === "online") {
+    playOnlineMove(row, col);
+    return;
+  }
   if (openingState === "decision") return;
   if (openingState === "choose") {
     chooseProposedMove(row, col);
@@ -188,7 +229,12 @@ function handleCellIntent(event) {
   const cell = event.currentTarget;
   const row = Number(cell.dataset.row);
   const col = Number(cell.dataset.col);
-  const problem = openingState === "choose" && !isProposedMove(row, col) ? "proposalOnly" : validateMove(row, col, currentPlayer);
+  let problem;
+  if (modeElement.value === "online") {
+    problem = board[row][col] !== EMPTY ? "occupied" : onlineMoveProblem();
+  } else {
+    problem = openingState === "choose" && !isProposedMove(row, col) ? "proposalOnly" : validateMove(row, col, currentPlayer);
+  }
   cell.classList.toggle("not-allowed", Boolean(problem));
   if (problem) showMoveError(problem, false);
   else if (statusMode === "intent") clearIntentStatus();
@@ -612,12 +658,20 @@ function showResult(winner) {
 }
 
 function updateRuleHint() {
+  if (modeElement.value === "online") {
+    hintElement.textContent = t("onlineOnlyFree");
+    return;
+  }
   hintElement.textContent = rulesElement.value === "renju"
     ? t("renjuHint")
     : t("freeHint");
 }
 
 function updateStatus() {
+  if (modeElement.value === "online") {
+    updateOnlineStatus();
+    return;
+  }
   if (openingState === "offer") {
     statusElement.textContent = t("offerStatus", { count: proposalMoves.length + 1 });
     return;
@@ -676,12 +730,274 @@ function updateBoardAriaLabels() {
   }
 }
 
+function onlineMoveProblem() {
+  if (!onlineSession || !onlineState || onlineState.status === "waiting") return "waitingForOpponent";
+  if (onlineState.status !== "active") return "gameOver";
+  if (onlineState.currentColor !== onlineState.yourColor) return "notYourTurn";
+  return "";
+}
+
+async function onlineApi(functionName, body) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.message || t("onlineError"));
+  return result;
+}
+
+function setOnlineBusy(busy) {
+  onlineRequestPending = busy;
+  document.querySelector("#create-online").disabled = busy;
+  document.querySelector("#join-online").disabled = busy;
+  if (busy) {
+    statusElement.textContent = t("onlineBusy");
+    statusElement.classList.remove("error");
+  }
+}
+
+async function createOnlineGame() {
+  if (onlineRequestPending) return;
+  const name = onlineNameInput.value.trim();
+  if (!name) { onlineNameInput.focus(); return; }
+  localStorage.setItem("five-online-name", name);
+  setOnlineBusy(true);
+  try {
+    const state = await onlineApi("create_online_game", { p_name: name });
+    saveOnlineSession(state.code, state.token);
+    applyOnlineState(state);
+    scheduleOnlinePoll(500);
+  } catch (error) {
+    showOnlineError(error);
+  } finally {
+    setOnlineBusy(false);
+  }
+}
+
+async function joinOnlineGame() {
+  if (onlineRequestPending) return;
+  const name = onlineNameInput.value.trim();
+  const code = onlineCodeInput.value.trim().toUpperCase();
+  if (!name) { onlineNameInput.focus(); return; }
+  if (!/^[0-9A-F]{6}$/.test(code)) { showMoveError("invalidCode", true); onlineCodeInput.focus(); return; }
+  localStorage.setItem("five-online-name", name);
+  setOnlineBusy(true);
+  try {
+    const state = await onlineApi("join_online_game", { p_code: code, p_name: name });
+    saveOnlineSession(state.code, state.token);
+    applyOnlineState(state);
+    scheduleOnlinePoll(500);
+  } catch (error) {
+    showOnlineError(error);
+  } finally {
+    setOnlineBusy(false);
+  }
+}
+
+function saveOnlineSession(code, token) {
+  onlineSession = { code, token };
+  localStorage.setItem("five-online-session", JSON.stringify(onlineSession));
+}
+
+async function restoreOnlineSession() {
+  const saved = localStorage.getItem("five-online-session");
+  if (!saved) return;
+  try {
+    onlineSession = JSON.parse(saved);
+    if (!onlineSession?.code || !onlineSession?.token) throw new Error();
+    modeElement.value = "online";
+    configureMode();
+    const state = await onlineApi("online_state", { p_code: onlineSession.code, p_token: onlineSession.token });
+    applyOnlineState(state);
+    scheduleOnlinePoll(700);
+  } catch {
+    clearOnlineSession();
+    configureMode();
+  }
+}
+
+function applyOnlineState(state) {
+  const previousStatus = onlineState?.status;
+  const previousMoves = onlineState?.moves?.length ?? -1;
+  onlineState = state;
+  onlineLobby.hidden = true;
+  onlineRoom.hidden = false;
+  roomCodeButton.textContent = state.code;
+  onlinePlayers.textContent = t("onlinePlayers", {
+    black: state.hostName,
+    white: state.guestName || "…"
+  });
+
+  if (previousMoves !== state.moves.length || previousStatus !== state.status || !board) {
+    board = Array.from({ length: SIZE }, () => Array(SIZE).fill(EMPTY));
+    currentPlayer = state.currentColor;
+    gameOver = state.status === "finished";
+    computerThinking = false;
+    moveCount = 0;
+    lastMove = null;
+    openingState = "move";
+    dialogElement.hidden = true;
+    renderBoard();
+    state.moves.forEach(move => placeStone(move.row, move.col, move.color));
+    if (state.status === "finished" && state.winner && state.moves.length) {
+      const finalMove = state.moves[state.moves.length - 1];
+      findWinningLine(finalMove.row, finalMove.col).forEach(([row, col]) => getCell(row, col).classList.add("winning"));
+    }
+  } else {
+    currentPlayer = state.currentColor;
+    gameOver = state.status === "finished";
+  }
+  updateStatus();
+  updateRuleHint();
+
+  if (state.status === "finished" && !onlineResultShown) {
+    onlineResultShown = true;
+    window.setTimeout(() => showResult(state.winner || EMPTY), 120);
+  }
+}
+
+async function playOnlineMove(row, col) {
+  const problem = board[row][col] !== EMPTY ? "occupied" : onlineMoveProblem();
+  if (problem) { showMoveError(problem, true); return; }
+  if (onlineRequestPending) return;
+  onlineRequestPending = true;
+  try {
+    const state = await onlineApi("play_online_move", {
+      p_code: onlineSession.code,
+      p_token: onlineSession.token,
+      p_row: row,
+      p_col: col
+    });
+    applyOnlineState(state);
+  } catch (error) {
+    showOnlineError(error);
+    await pollOnlineState();
+  } finally {
+    onlineRequestPending = false;
+  }
+}
+
+function scheduleOnlinePoll(delay = 1200) {
+  window.clearTimeout(onlinePollTimer);
+  if (modeElement.value === "online" && onlineSession) {
+    onlinePollTimer = window.setTimeout(pollOnlineState, delay);
+  }
+}
+
+async function pollOnlineState() {
+  if (!onlineSession || modeElement.value !== "online") return;
+  try {
+    const state = await onlineApi("online_state", { p_code: onlineSession.code, p_token: onlineSession.token });
+    applyOnlineState(state);
+  } catch (error) {
+    if (!navigator.onLine) showOnlineError(error);
+  } finally {
+    scheduleOnlinePoll();
+  }
+}
+
+async function leaveOnlineGame() {
+  const session = onlineSession;
+  const shouldResign = onlineState?.status === "active";
+  clearOnlineSession();
+  configureMode();
+  resetGame();
+  if (session && shouldResign) {
+    onlineApi("resign_online_game", { p_code: session.code, p_token: session.token }).catch(() => {});
+  }
+}
+
+function clearOnlineSession() {
+  window.clearTimeout(onlinePollTimer);
+  onlineSession = null;
+  onlineState = null;
+  onlineResultShown = false;
+  localStorage.removeItem("five-online-session");
+}
+
+function showOnlineError(error) {
+  const knownMessage = /inte din tur/i.test(error.message) ? t("notYourTurn")
+    : /upptagen/i.test(error.message) ? t("occupied")
+    : error.message || t("onlineError");
+  window.clearTimeout(statusTimer);
+  statusElement.textContent = knownMessage;
+  statusElement.classList.add("error");
+  statusMode = "click";
+  statusTimer = window.setTimeout(clearIntentStatus, 3200);
+}
+
+function updateOnlineStatus() {
+  statusElement.classList.remove("error");
+  if (!onlineState) {
+    statusElement.textContent = t("onlineOnlyFree");
+    return;
+  }
+  if (onlineState.status === "waiting") {
+    statusElement.textContent = t("onlineWaiting", { code: onlineState.code });
+    return;
+  }
+  if (onlineState.status === "finished") {
+    statusElement.textContent = onlineState.winner
+      ? t("wins", { player: playerName(onlineState.winner) })
+      : t("draw");
+    return;
+  }
+  const yourColor = playerName(onlineState.yourColor);
+  if (onlineState.currentColor === onlineState.yourColor) {
+    statusElement.textContent = t("onlineYourTurn", { color: yourColor });
+  } else {
+    const opponentName = onlineState.yourColor === BLACK ? onlineState.guestName : onlineState.hostName;
+    statusElement.textContent = t("onlineOpponentTurn", { name: opponentName, color: yourColor });
+  }
+}
+
+function configureMode() {
+  const isOnline = modeElement.value === "online";
+  difficultyField.hidden = modeElement.value !== "computer";
+  onlinePanel.hidden = !isOnline;
+  rulesElement.disabled = isOnline;
+  document.querySelector("#new-game").hidden = isOnline;
+  if (isOnline) {
+    rulesElement.value = "free";
+    onlineLobby.hidden = Boolean(onlineSession);
+    onlineRoom.hidden = !onlineSession;
+    if (onlineSession) scheduleOnlinePoll(100);
+  } else {
+    window.clearTimeout(onlinePollTimer);
+  }
+  updateRuleHint();
+  updateStatus();
+}
+
 document.querySelector("#new-game").addEventListener("click", resetGame);
-document.querySelector("#play-again").addEventListener("click", resetGame);
+document.querySelector("#play-again").addEventListener("click", () => {
+  if (modeElement.value === "online") dialogElement.hidden = true;
+  else resetGame();
+});
 keepColorsButton.addEventListener("click", () => resolveOpeningDecision("keep"));
 swapColorsButton.addEventListener("click", () => resolveOpeningDecision("swap"));
 offerTenButton.addEventListener("click", () => resolveOpeningDecision("offer"));
-modeElement.addEventListener("change", () => { difficultyField.hidden = modeElement.value !== "computer"; scores = { black: 0, white: 0, draw: 0 }; updateScore(); resetGame(); });
+document.querySelector("#create-online").addEventListener("click", createOnlineGame);
+document.querySelector("#join-online").addEventListener("click", joinOnlineGame);
+document.querySelector("#leave-online").addEventListener("click", leaveOnlineGame);
+roomCodeButton.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(roomCodeButton.textContent);
+    showMoveError("copied", true);
+  } catch { /* The visible code can still be selected manually. */ }
+});
+onlineCodeInput.addEventListener("input", () => {
+  onlineCodeInput.value = onlineCodeInput.value.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 6);
+});
+onlineCodeInput.addEventListener("keydown", event => { if (event.key === "Enter") joinOnlineGame(); });
+modeElement.addEventListener("change", () => {
+  scores = { black: 0, white: 0, draw: 0 };
+  updateScore();
+  resetGame();
+  configureMode();
+});
 rulesElement.addEventListener("change", () => { scores = { black: 0, white: 0, draw: 0 }; updateScore(); resetGame(); });
 difficultyElement.addEventListener("change", resetGame);
 languageElement.addEventListener("change", () => {
@@ -691,5 +1007,8 @@ languageElement.addEventListener("change", () => {
 });
 
 languageElement.value = language;
+onlineNameInput.value = localStorage.getItem("five-online-name") || "";
 resetGame();
 applyLanguage();
+configureMode();
+restoreOnlineSession();
