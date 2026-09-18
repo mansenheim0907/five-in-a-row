@@ -16,6 +16,11 @@ const difficultyElement = document.querySelector("#difficulty");
 const difficultyField = document.querySelector("#difficulty-field");
 const dialogElement = document.querySelector("#game-dialog");
 const languageElement = document.querySelector("#language");
+const openingPanel = document.querySelector("#opening-panel");
+const openingMessage = document.querySelector("#opening-message");
+const keepColorsButton = document.querySelector("#keep-colors");
+const swapColorsButton = document.querySelector("#swap-colors");
+const offerTenButton = document.querySelector("#offer-ten");
 
 const translations = {
   sv: {
@@ -35,7 +40,17 @@ const translations = {
     blackName: "Svart", whiteName: "Vit", wins: "{player} vinner!", fiveInRow: "{player} fick fem i rad.",
     boardFull: "Brädet är fullt utan någon vinnare.",
     renjuHint: "Renju: svart börjar i mitten och får inte göra överlinje, dubbel-trea eller dubbel-fyra.",
-    freeHint: "Fritt spel: placera fem eller fler stenar i rad – vågrätt, lodrätt eller diagonalt."
+    freeHint: "Fritt spel: placera fem eller fler stenar i rad – vågrätt, lodrätt eller diagonalt.",
+    keepColors: "Behåll färger", swapColors: "Byt färger", offerTen: "Föreslå 10 femtedrag",
+    openingDecision: "{player}: vill du behålla eller byta färg?", computerDecision: "Datorn väljer färg…",
+    openingZone: "Öppningsdrag {move} måste placeras inom centrumområdet {size}×{size}.",
+    offerStatus: "Placera förslag {count} av 10 för svarts femte drag.",
+    chooseProposal: "Välj ett av de markerade förslagen som svarts femte drag.",
+    proposalOnly: "Välj en av de tio markerade positionerna.",
+    symmetricProposal: "Förslaget är symmetriskt med ett tidigare förslag. Välj en annan position.",
+    playerLabel: "Spelare {seat}", yourTurnColor: "Din tur – du spelar {color}",
+    computerTurnColor: "Datorns tur – {color}", localTurn: "Spelare {seat} – {color}s tur",
+    renjuHint: "Renju med Taraguchi-10: följ öppningsområdena och välj om färgerna ska bytas. Svart får inte göra överlinje, dubbel-trea eller dubbel-fyra."
   },
   en: {
     pageTitle: "Five in a Row", eyebrow: "CLASSIC BOARD GAME", title: "Five in a Row",
@@ -54,7 +69,17 @@ const translations = {
     blackName: "Black", whiteName: "White", wins: "{player} wins!", fiveInRow: "{player} made five in a row.",
     boardFull: "The board is full with no winner.",
     renjuHint: "Renju: Black starts in the centre and may not make an overline, double three or double four.",
-    freeHint: "Freestyle: place five or more stones in a row – horizontally, vertically or diagonally."
+    freeHint: "Freestyle: place five or more stones in a row – horizontally, vertically or diagonally.",
+    keepColors: "Keep colours", swapColors: "Swap colours", offerTen: "Offer 10 fifth moves",
+    openingDecision: "{player}: keep or swap colours?", computerDecision: "The computer is choosing colours…",
+    openingZone: "Opening move {move} must be placed inside the central {size}×{size} area.",
+    offerStatus: "Place proposal {count} of 10 for Black's fifth move.",
+    chooseProposal: "Choose one of the marked proposals as Black's fifth move.",
+    proposalOnly: "Choose one of the ten marked positions.",
+    symmetricProposal: "That proposal is symmetrical to an earlier one. Choose another position.",
+    playerLabel: "Player {seat}", yourTurnColor: "Your turn – you are {color}",
+    computerTurnColor: "Computer's turn – {color}", localTurn: "Player {seat} – {color}'s turn",
+    renjuHint: "Renju with Taraguchi-10: follow the opening zones and choose whether to swap colours. Black may not make an overline, double three or double four."
   }
 };
 
@@ -66,6 +91,11 @@ let moveCount;
 let lastMove;
 let statusTimer;
 let statusMode = "normal";
+let blackSeat;
+let openingState;
+let decisionAfterMove;
+let decisionSeat;
+let proposalMoves;
 let language = localStorage.getItem("five-language") === "en" ? "en" : "sv";
 let scores = { black: 0, white: 0, draw: 0 };
 
@@ -80,6 +110,7 @@ function applyLanguage() {
   document.querySelectorAll("[data-i18n-aria-label]").forEach(element => { element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel)); });
   updateBoardAriaLabels();
   updateRuleHint();
+  updateOpeningPanel();
   updateStatus();
 }
 
@@ -90,9 +121,15 @@ function resetGame() {
   computerThinking = false;
   moveCount = 0;
   lastMove = null;
+  blackSeat = 1;
+  openingState = "move";
+  decisionAfterMove = 0;
+  decisionSeat = 0;
+  proposalMoves = [];
   window.clearTimeout(statusTimer);
   statusElement.classList.remove("error");
   dialogElement.hidden = true;
+  openingPanel.hidden = true;
   renderBoard();
   updateRuleHint();
   updateStatus();
@@ -124,25 +161,32 @@ function handleCellClick(event) {
   if (gameOver || computerThinking) return;
   const row = Number(event.currentTarget.dataset.row);
   const col = Number(event.currentTarget.dataset.col);
+  if (openingState === "decision") return;
+  if (openingState === "choose") {
+    chooseProposedMove(row, col);
+    return;
+  }
   const problem = validateMove(row, col, currentPlayer);
   if (problem) {
     showMoveError(problem, true);
     return;
   }
+  if (openingState === "offer") {
+    addProposedMove(row, col);
+    return;
+  }
+  const moverSeat = seatForColor(currentPlayer);
   placeStone(row, col, currentPlayer);
   if (finishTurn(row, col)) return;
-
-  currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
-  updateStatus();
-  if (modeElement.value === "computer" && currentPlayer === WHITE) computerMove();
+  advanceAfterMove(moverSeat);
 }
 
 function handleCellIntent(event) {
-  if (gameOver || computerThinking) return;
+  if (gameOver || computerThinking || openingState === "decision") return;
   const cell = event.currentTarget;
   const row = Number(cell.dataset.row);
   const col = Number(cell.dataset.col);
-  const problem = validateMove(row, col, currentPlayer);
+  const problem = openingState === "choose" && !isProposedMove(row, col) ? "proposalOnly" : validateMove(row, col, currentPlayer);
   cell.classList.toggle("not-allowed", Boolean(problem));
   if (problem) showMoveError(problem, false);
   else if (statusMode === "intent") clearIntentStatus();
@@ -155,8 +199,12 @@ function clearCellIntent(event) {
 
 function validateMove(row, col, player) {
   if (!isInside(row, col) || board[row][col] !== EMPTY) return "occupied";
-  if (rulesElement.value !== "renju" || player !== BLACK) return "";
-  if (moveCount === 0 && (row !== CENTER || col !== CENTER)) return "firstCenter";
+  if (rulesElement.value !== "renju") return "";
+  if (openingState === "choose") return isProposedMove(row, col) ? "" : "proposalOnly";
+  if (openingState === "offer" && proposalMoves.some(move => symmetryKey(move.row, move.col) === symmetryKey(row, col))) return "symmetricProposal";
+  const openingProblem = validateOpeningZone(row, col);
+  if (openingProblem) return openingProblem;
+  if (player !== BLACK) return "";
 
   board[row][col] = BLACK;
   let problem = "";
@@ -167,6 +215,141 @@ function validateMove(row, col, player) {
   }
   board[row][col] = EMPTY;
   return problem;
+}
+
+function validateOpeningZone(row, col) {
+  if (openingState !== "move" || moveCount >= 5) return "";
+  const radii = [0, 1, 2, 3, 4];
+  const radius = radii[moveCount];
+  if (Math.abs(row - CENTER) <= radius && Math.abs(col - CENTER) <= radius) return "";
+  return "openingZone";
+}
+
+function advanceAfterMove(moverSeat, skipDecision = false) {
+  currentPlayer = moveCount % 2 === 0 ? BLACK : WHITE;
+  if (rulesElement.value === "renju" && moveCount <= 5 && !skipDecision) {
+    beginOpeningDecision(moveCount, 3 - moverSeat);
+    return;
+  }
+  openingState = "move";
+  openingPanel.hidden = true;
+  updateStatus();
+  maybeStartComputerTurn();
+}
+
+function beginOpeningDecision(afterMove, seat) {
+  openingState = "decision";
+  decisionAfterMove = afterMove;
+  decisionSeat = seat;
+  updateOpeningPanel();
+  updateStatus();
+  if (isComputerSeat(seat)) {
+    computerThinking = true;
+    window.setTimeout(() => {
+      computerThinking = false;
+      const offer = afterMove === 4 && difficultyElement.value === "hard" && Math.random() < .25;
+      resolveOpeningDecision(offer ? "offer" : "keep");
+    }, 550);
+  }
+}
+
+function resolveOpeningDecision(choice) {
+  if (openingState !== "decision") return;
+  if (choice === "swap") blackSeat = 3 - blackSeat;
+  openingPanel.hidden = true;
+  if (choice === "offer") {
+    openingState = "offer";
+    currentPlayer = BLACK;
+    proposalMoves = [];
+    updateStatus();
+    if (isComputerSeat(seatForColor(BLACK))) computerOfferMoves();
+    return;
+  }
+  openingState = "move";
+  currentPlayer = moveCount % 2 === 0 ? BLACK : WHITE;
+  updateStatus();
+  maybeStartComputerTurn();
+}
+
+function updateOpeningPanel() {
+  if (!openingPanel || openingState !== "decision") {
+    if (openingPanel) openingPanel.hidden = true;
+    return;
+  }
+  openingPanel.hidden = isComputerSeat(decisionSeat);
+  offerTenButton.hidden = decisionAfterMove !== 4;
+  const player = modeElement.value === "local" ? t("playerLabel", { seat: decisionSeat }) : t("yourTurnColor", { color: playerName(colorForSeat(decisionSeat)) });
+  openingMessage.textContent = t("openingDecision", { player });
+}
+
+function addProposedMove(row, col) {
+  proposalMoves.push({ row, col });
+  getCell(row, col).classList.add("proposal");
+  if (proposalMoves.length < 10) {
+    updateStatus();
+    return;
+  }
+  openingState = "choose";
+  currentPlayer = WHITE;
+  updateStatus();
+  if (isComputerSeat(seatForColor(WHITE))) {
+    computerThinking = true;
+    window.setTimeout(() => {
+      computerThinking = false;
+      const selected = chooseProposalForComputer();
+      chooseProposedMove(selected.row, selected.col);
+    }, 550);
+  }
+}
+
+function chooseProposedMove(row, col) {
+  if (!isProposedMove(row, col)) {
+    showMoveError("proposalOnly", true);
+    return;
+  }
+  proposalMoves.forEach(move => getCell(move.row, move.col).classList.remove("proposal"));
+  proposalMoves = [];
+  placeStone(row, col, BLACK);
+  openingState = "move";
+  currentPlayer = WHITE;
+  updateStatus();
+  maybeStartComputerTurn();
+}
+
+function isProposedMove(row, col) {
+  return proposalMoves.some(move => move.row === row && move.col === col);
+}
+
+function symmetryKey(row, col) {
+  const x = row - CENTER;
+  const y = col - CENTER;
+  return [[x,y],[x,-y],[-x,y],[-x,-y],[y,x],[y,-x],[-y,x],[-y,-x]]
+    .map(([a,b]) => `${a},${b}`).sort()[0];
+}
+
+function computerOfferMoves() {
+  computerThinking = true;
+  window.setTimeout(() => {
+    const choices = [];
+    const used = new Set();
+    for (let row = 0; row < SIZE; row += 1) {
+      for (let col = 0; col < SIZE; col += 1) {
+        if (board[row][col] !== EMPTY) continue;
+        const key = symmetryKey(row, col);
+        if (used.has(key)) continue;
+        used.add(key);
+        choices.push({ row, col, score: scorePosition(row, col, BLACK) + Math.random() * 20 });
+      }
+    }
+    choices.sort((a, b) => b.score - a.score);
+    computerThinking = false;
+    choices.slice(0, 10).forEach(move => addProposedMove(move.row, move.col));
+  }, 550);
+}
+
+function chooseProposalForComputer() {
+  if (difficultyElement.value === "easy") return randomChoice(proposalMoves);
+  return [...proposalMoves].sort((a, b) => scorePosition(a.row, a.col, BLACK) - scorePosition(b.row, b.col, BLACK))[0];
 }
 
 function placeStone(row, col, player) {
@@ -209,13 +392,14 @@ function computerMove() {
   computerThinking = true;
   statusElement.textContent = t("computerThinking");
   window.setTimeout(() => {
+    const player = currentPlayer;
+    const moverSeat = seatForColor(player);
     const move = chooseComputerMove(difficultyElement.value);
-    if (!move || gameOver) return;
-    placeStone(move.row, move.col, WHITE);
+    if (!move || gameOver) { computerThinking = false; return; }
+    placeStone(move.row, move.col, player);
     computerThinking = false;
     if (finishTurn(move.row, move.col)) return;
-    currentPlayer = BLACK;
-    updateStatus();
+    advanceAfterMove(moverSeat);
   }, 350);
 }
 
@@ -225,8 +409,9 @@ function chooseComputerMove(difficulty) {
   if (difficulty === "easy" && Math.random() < 0.7) return randomChoice(candidates);
 
   const scored = candidates.map(move => {
-    const attack = scorePosition(move.row, move.col, WHITE);
-    const defence = scorePosition(move.row, move.col, BLACK);
+    const opponent = currentPlayer === BLACK ? WHITE : BLACK;
+    const attack = scorePosition(move.row, move.col, currentPlayer);
+    const defence = scorePosition(move.row, move.col, opponent);
     const center = 7 - (Math.abs(move.row - CENTER) + Math.abs(move.col - CENTER)) * 0.08;
     const noise = difficulty === "medium" ? Math.random() * 35 : Math.random() * 3;
     return { ...move, score: Math.max(attack * 1.12, defence) + attack * .15 + center + noise };
@@ -242,6 +427,7 @@ function candidateMoves() {
   for (let row = 0; row < SIZE; row += 1) {
     for (let col = 0; col < SIZE; col += 1) {
       if (board[row][col] !== EMPTY) { hasStone = true; continue; }
+      if (validateMove(row, col, currentPlayer)) continue;
       let nearby = false;
       for (let dr = -2; dr <= 2 && !nearby; dr += 1) {
         for (let dc = -2; dc <= 2; dc += 1) {
@@ -251,7 +437,11 @@ function candidateMoves() {
       if (nearby) candidates.push({ row, col });
     }
   }
-  return hasStone ? candidates : [{ row: CENTER, col: CENTER }];
+  if (!hasStone) return [{ row: CENTER, col: CENTER }];
+  if (candidates.length) return candidates;
+  const fallback = [];
+  for (let row = 0; row < SIZE; row += 1) for (let col = 0; col < SIZE; col += 1) if (!validateMove(row, col, currentPlayer)) fallback.push({ row, col });
+  return fallback;
 }
 
 function scorePosition(row, col, player) {
@@ -366,7 +556,10 @@ function findWinningLine(row, col) {
 
 function showMoveError(messageKey, persistent) {
   window.clearTimeout(statusTimer);
-  statusElement.textContent = t(messageKey);
+  const values = messageKey === "openingZone"
+    ? { move: moveCount + 1, size: moveCount * 2 + 1 }
+    : {};
+  statusElement.textContent = t(messageKey, values);
   statusElement.classList.add("error");
   statusMode = persistent ? "click" : "intent";
   if (persistent) statusTimer = window.setTimeout(clearIntentStatus, 2600);
@@ -395,12 +588,28 @@ function updateRuleHint() {
 }
 
 function updateStatus() {
+  if (openingState === "offer") {
+    statusElement.textContent = t("offerStatus", { count: proposalMoves.length + 1 });
+    return;
+  }
+  if (openingState === "choose") {
+    statusElement.textContent = t("chooseProposal");
+    return;
+  }
+  if (openingState === "decision") {
+    statusElement.textContent = isComputerSeat(decisionSeat) ? t("computerDecision") : t("openingDecision", {
+      player: modeElement.value === "local" ? t("playerLabel", { seat: decisionSeat }) : t("yourTurnColor", { color: playerName(colorForSeat(decisionSeat)) })
+    });
+    return;
+  }
   if (rulesElement.value === "renju" && moveCount === 0) {
     statusElement.textContent = t("renjuStart");
   } else if (modeElement.value === "computer") {
-    statusElement.textContent = currentPlayer === BLACK ? t("yourTurn") : t("computerTurn");
+    statusElement.textContent = seatForColor(currentPlayer) === 1
+      ? t("yourTurnColor", { color: playerName(currentPlayer) })
+      : t("computerTurnColor", { color: playerName(currentPlayer) });
   } else {
-    statusElement.textContent = t("playerTurn", { player: playerName(currentPlayer) });
+    statusElement.textContent = t("localTurn", { seat: seatForColor(currentPlayer), color: playerName(currentPlayer) });
   }
 }
 
@@ -414,6 +623,13 @@ function getCell(row, col) { return boardElement.children[row * SIZE + col]; }
 function isInside(row, col) { return row >= 0 && row < SIZE && col >= 0 && col < SIZE; }
 function playerName(player) { return player === BLACK ? t("blackName") : t("whiteName"); }
 function randomChoice(items) { return items[Math.floor(Math.random() * items.length)]; }
+function seatForColor(color) { return color === BLACK ? blackSeat : 3 - blackSeat; }
+function colorForSeat(seat) { return seat === blackSeat ? BLACK : WHITE; }
+function isComputerSeat(seat) { return modeElement.value === "computer" && seat === 2; }
+
+function maybeStartComputerTurn() {
+  if (!gameOver && openingState === "move" && isComputerSeat(seatForColor(currentPlayer))) computerMove();
+}
 
 function cellAriaLabel(row, col) {
   let label = t("rowCol", { row: row + 1, col: col + 1 });
@@ -431,6 +647,9 @@ function updateBoardAriaLabels() {
 
 document.querySelector("#new-game").addEventListener("click", resetGame);
 document.querySelector("#play-again").addEventListener("click", resetGame);
+keepColorsButton.addEventListener("click", () => resolveOpeningDecision("keep"));
+swapColorsButton.addEventListener("click", () => resolveOpeningDecision("swap"));
+offerTenButton.addEventListener("click", () => resolveOpeningDecision("offer"));
 modeElement.addEventListener("change", () => { difficultyField.hidden = modeElement.value !== "computer"; scores = { black: 0, white: 0, draw: 0 }; updateScore(); resetGame(); });
 rulesElement.addEventListener("change", () => { scores = { black: 0, white: 0, draw: 0 }; updateScore(); resetGame(); });
 difficultyElement.addEventListener("change", resetGame);
