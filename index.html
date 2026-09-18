@@ -5,56 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#102a43">
   <title>Fem i rad</title>
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <main class="app-shell">
     <header class="hero">
-      <p class="eyebrow">KLASSISKT BRÄDSPEL</p>
-      <h1>Fem i rad</h1>
-      <p>Utmana datorn eller spela tillsammans på samma skärm.</p>
+      <p class="eyebrow" data-i18n="eyebrow">KLASSISKT BRÄDSPEL</p>
+      <h1 data-i18n="title">Fem i rad</h1>
+      <p data-i18n="subtitle">Utmana datorn eller spela tillsammans på samma skärm.</p>
     </header>
 
-    <section class="game-card" aria-label="Spelområde">
+    <section class="game-card" aria-label="Spelområde" data-i18n-aria-label="gameArea">
       <aside class="controls">
         <div class="field">
-          <label for="game-mode">Spelläge</label>
+          <label for="language" data-i18n="language">Språk</label>
+          <select id="language">
+            <option value="sv">Svenska</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="game-mode" data-i18n="gameMode">Spelläge</label>
           <select id="game-mode">
-            <option value="computer">Mot datorn</option>
-            <option value="local">Två spelare</option>
+            <option value="computer" data-i18n="computer">Mot datorn</option>
+            <option value="local" data-i18n="local">Två spelare</option>
           </select>
         </div>
 
         <div class="field" id="difficulty-field">
-          <label for="difficulty">Svårighetsgrad</label>
+          <label for="difficulty" data-i18n="difficulty">Svårighetsgrad</label>
           <select id="difficulty">
-            <option value="easy">Lätt</option>
-            <option value="medium" selected>Medel</option>
-            <option value="hard">Svår</option>
+            <option value="easy" data-i18n="easy">Lätt</option>
+            <option value="medium" data-i18n="medium" selected>Medel</option>
+            <option value="hard" data-i18n="hard">Svår</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="rule-set">Regler</label>
+          <label for="rule-set" data-i18n="rules">Regler</label>
           <select id="rule-set">
-            <option value="free">Fritt spel</option>
-            <option value="renju" disabled>Renju (kommer snart)</option>
+            <option value="free" data-i18n="freeRules">Fritt fem i rad</option>
+            <option value="renju">Renju</option>
           </select>
         </div>
 
-        <button id="new-game" class="primary">Nytt spel</button>
+        <button id="new-game" class="primary" data-i18n="newGame">Nytt spel</button>
 
-        <div class="score" aria-label="Resultat denna session">
-          <div><strong id="black-score">0</strong><span>Svart</span></div>
-          <div><strong id="draw-score">0</strong><span>Oavgjort</span></div>
-          <div><strong id="white-score">0</strong><span>Vit</span></div>
+        <div class="score" aria-label="Resultat denna session" data-i18n-aria-label="sessionScore">
+          <div><strong id="black-score">0</strong><span data-i18n="black">Svart</span></div>
+          <div><strong id="draw-score">0</strong><span data-i18n="draw">Oavgjort</span></div>
+          <div><strong id="white-score">0</strong><span data-i18n="white">Vit</span></div>
         </div>
       </aside>
 
       <div class="board-area">
         <div class="status" id="status" role="status">Din tur – svart börjar</div>
-        <div id="board" class="board" role="grid" aria-label="Spelbräde, 15 gånger 15"></div>
-        <p class="hint">Placera fem stenar i rad – vågrätt, lodrätt eller diagonalt.</p>
+        <div id="board" class="board" role="grid" aria-label="Spelbräde, 15 gånger 15" data-i18n-aria-label="boardAria"></div>
+        <p class="hint" id="rule-hint"></p>
       </div>
     </section>
   </main>
@@ -62,12 +70,12 @@
   <div class="dialog-backdrop" id="game-dialog" hidden>
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
       <div class="winner-stone" id="winner-stone"></div>
-      <h2 id="dialog-title">Spelet är slut</h2>
+      <h2 id="dialog-title" data-i18n="gameOver">Spelet är slut</h2>
       <p id="dialog-message"></p>
-      <button id="play-again" class="primary">Spela igen</button>
+      <button id="play-again" class="primary" data-i18n="playAgain">Spela igen</button>
     </div>
   </div>
 
-  <script src="game.js?v=3"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>
