@@ -412,19 +412,43 @@ function computerMove() {
 function chooseComputerMove(difficulty) {
   const candidates = candidateMoves();
   if (!candidates.length) return { row: CENTER, col: CENTER };
-  if (difficulty === "easy" && Math.random() < 0.7) return randomChoice(candidates);
+
+  const winningMoves = candidates.filter(move => wouldWin(move.row, move.col, currentPlayer));
+  if (winningMoves.length) return randomChoice(winningMoves);
+
+  const opponent = currentPlayer === BLACK ? WHITE : BLACK;
+  const blockingMoves = candidates.filter(move => isLegalMoveFor(move.row, move.col, opponent) && wouldWin(move.row, move.col, opponent));
+  if (blockingMoves.length && (difficulty !== "easy" || Math.random() < 0.9)) return randomChoice(blockingMoves);
 
   const scored = candidates.map(move => {
-    const opponent = currentPlayer === BLACK ? WHITE : BLACK;
     const attack = scorePosition(move.row, move.col, currentPlayer);
     const defence = scorePosition(move.row, move.col, opponent);
     const center = 7 - (Math.abs(move.row - CENTER) + Math.abs(move.col - CENTER)) * 0.08;
-    const noise = difficulty === "medium" ? Math.random() * 35 : Math.random() * 3;
+    const noise = difficulty === "easy" ? Math.random() * 18 : difficulty === "medium" ? Math.random() * 7 : Math.random() * 3;
     return { ...move, score: Math.max(attack * 1.12, defence) + attack * .15 + center + noise };
   });
   scored.sort((a, b) => b.score - a.score);
-  if (difficulty === "medium") return randomChoice(scored.slice(0, Math.min(3, scored.length)));
+  if (difficulty === "easy") {
+    const poolSize = Math.random() < .35 ? 8 : 3;
+    return randomChoice(scored.slice(0, Math.min(poolSize, scored.length)));
+  }
+  if (difficulty === "medium") return randomChoice(scored.slice(0, Math.min(2, scored.length)));
   return scored[0];
+}
+
+function wouldWin(row, col, player) {
+  if (board[row][col] !== EMPTY) return false;
+  board[row][col] = player;
+  const wins = DIRECTIONS.some(([dr, dc]) => {
+    const length = lineLength(row, col, dr, dc, player);
+    return rulesElement.value === "renju" && player === BLACK ? length === 5 : length >= 5;
+  });
+  board[row][col] = EMPTY;
+  return wins;
+}
+
+function isLegalMoveFor(row, col, player) {
+  return validateMove(row, col, player) === "";
 }
 
 function candidateMoves() {
