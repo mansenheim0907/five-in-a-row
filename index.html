@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#102a43">
   <title>Fem i rad</title>
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <main class="app-shell">
@@ -30,7 +30,30 @@
           <select id="game-mode">
             <option value="computer" data-i18n="computer">Mot datorn</option>
             <option value="local" data-i18n="local">Två spelare</option>
+            <option value="online" data-i18n="online">Spela online</option>
           </select>
+        </div>
+
+        <div class="online-panel" id="online-panel" hidden>
+          <div id="online-lobby">
+            <div class="field">
+              <label for="online-name" data-i18n="yourName">Ditt namn</label>
+              <input id="online-name" maxlength="24" autocomplete="nickname" data-i18n-placeholder="namePlaceholder" placeholder="Spelare">
+            </div>
+            <button id="create-online" class="primary" data-i18n="createMatch">Skapa match</button>
+            <div class="online-divider"><span data-i18n="or">eller</span></div>
+            <div class="field">
+              <label for="online-code" data-i18n="matchCode">Matchkod</label>
+              <input id="online-code" class="code-input" maxlength="6" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="A1B2C3">
+            </div>
+            <button id="join-online" class="secondary" data-i18n="joinMatch">Gå med</button>
+          </div>
+          <div id="online-room" class="online-room" hidden>
+            <span data-i18n="matchCode">Matchkod</span>
+            <button id="copy-code" class="room-code" type="button" title="Kopiera matchkod">------</button>
+            <p id="online-players"></p>
+            <button id="leave-online" class="secondary danger" data-i18n="leaveMatch">Lämna matchen</button>
+          </div>
         </div>
 
         <div class="field" id="difficulty-field">
@@ -84,6 +107,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=10"></script>
+  <script src="game.js?v=11"></script>
 </body>
 </html>
