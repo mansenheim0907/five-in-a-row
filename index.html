@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102a43">
+  <title>Fem i rad</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <p class="eyebrow">KLASSISKT BRÄDSPEL</p>
+      <h1>Fem i rad</h1>
+      <p>Utmana datorn eller spela tillsammans på samma skärm.</p>
+    </header>
+
+    <section class="game-card" aria-label="Spelområde">
+      <aside class="controls">
+        <div class="field">
+          <label for="game-mode">Spelläge</label>
+          <select id="game-mode">
+            <option value="computer">Mot datorn</option>
+            <option value="local">Två spelare</option>
+          </select>
+        </div>
+
+        <div class="field" id="difficulty-field">
+          <label for="difficulty">Svårighetsgrad</label>
+          <select id="difficulty">
+            <option value="easy">Lätt</option>
+            <option value="medium" selected>Medel</option>
+            <option value="hard">Svår</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="rule-set">Regler</label>
+          <select id="rule-set">
+            <option value="free">Fritt spel</option>
+            <option value="renju" disabled>Renju (kommer snart)</option>
+          </select>
+        </div>
+
+        <button id="new-game" class="primary">Nytt spel</button>
+
+        <div class="score" aria-label="Resultat denna session">
+          <div><strong id="black-score">0</strong><span>Svart</span></div>
+          <div><strong id="draw-score">0</strong><span>Oavgjort</span></div>
+          <div><strong id="white-score">0</strong><span>Vit</span></div>
+        </div>
+      </aside>
+
+      <div class="board-area">
+        <div class="status" id="status" role="status">Din tur – svart börjar</div>
+        <div id="board" class="board" role="grid" aria-label="Spelbräde, 15 gånger 15"></div>
+        <p class="hint">Placera fem stenar i rad – vågrätt, lodrätt eller diagonalt.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="dialog-backdrop" id="game-dialog" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+      <div class="winner-stone" id="winner-stone"></div>
+      <h2 id="dialog-title">Spelet är slut</h2>
+      <p id="dialog-message"></p>
+      <button id="play-again" class="primary">Spela igen</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
