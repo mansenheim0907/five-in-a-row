@@ -68,7 +68,8 @@ const translations = {
     onlineYourTurn: "Din tur – du spelar {color}", onlineOpponentTurn: "{name}s tur – du spelar {color}",
     onlinePlayers: "{black} (svart) mot {white} (vit)", onlineError: "Det gick inte att ansluta. Försök igen.",
     invalidCode: "Ange en matchkod med 6 tecken.", onlineBusy: "Ansluter…", onlineOnlyFree: "Onlineläget använder fritt fem-i-rad.",
-    notYourTurn: "Det är inte din tur.", waitingForOpponent: "Vänta tills en motspelare har anslutit.", opponentLeft: "Motspelaren lämnade matchen."
+    notYourTurn: "Det är inte din tur.", waitingForOpponent: "Vänta tills en motspelare har anslutit.",
+    playerLeft: "{player} lämnade matchen."
   },
   en: {
     pageTitle: "Five in a Row", eyebrow: "CLASSIC BOARD GAME", title: "Five in a Row",
@@ -105,7 +106,8 @@ const translations = {
     onlineYourTurn: "Your turn – you are {color}", onlineOpponentTurn: "{name}'s turn – you are {color}",
     onlinePlayers: "{black} (Black) vs {white} (White)", onlineError: "Could not connect. Please try again.",
     invalidCode: "Enter a 6-character match code.", onlineBusy: "Connecting…", onlineOnlyFree: "Online mode uses freestyle five in a row.",
-    notYourTurn: "It is not your turn.", waitingForOpponent: "Wait for an opponent to join.", opponentLeft: "Your opponent left the match."
+    notYourTurn: "It is not your turn.", waitingForOpponent: "Wait for an opponent to join.",
+    playerLeft: "{player} left the match."
   }
 };
 
@@ -657,6 +659,20 @@ function showResult(winner) {
   dialogElement.hidden = false;
 }
 
+function showOnlineResult(state) {
+  const winner = state.winner || EMPTY;
+  document.querySelector("#dialog-title").textContent = winner
+    ? t("wins", { player: playerName(winner) })
+    : t("draw");
+  document.querySelector("#dialog-message").textContent = state.endReason === "resigned" && state.resignedColor
+    ? t("playerLeft", { player: playerName(state.resignedColor) })
+    : winner ? t("fiveInRow", { player: playerName(winner) }) : t("boardFull");
+  const stone = document.querySelector("#winner-stone");
+  stone.hidden = winner === EMPTY;
+  stone.className = `winner-stone${winner === WHITE ? " white" : ""}`;
+  dialogElement.hidden = false;
+}
+
 function updateRuleHint() {
   if (modeElement.value === "online") {
     hintElement.textContent = t("onlineOnlyFree");
@@ -854,7 +870,7 @@ function applyOnlineState(state) {
 
   if (state.status === "finished" && !onlineResultShown) {
     onlineResultShown = true;
-    window.setTimeout(() => showResult(state.winner || EMPTY), 120);
+    window.setTimeout(() => showOnlineResult(state), 120);
   }
 }
 
