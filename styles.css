@@ -23,6 +23,8 @@ select { width: 100%; padding: 11px 12px; border: 1px solid #bcccdc; border-radi
 select:focus, button:focus-visible, .intersection:focus-visible { outline: 3px solid #5fb3b3; outline-offset: 2px; }
 .primary { border: 0; border-radius: 10px; padding: 12px 18px; font-weight: 800; color: #fff; background: #c4663b; cursor: pointer; box-shadow: 0 7px 16px rgba(196,102,59,.25); transition: transform .15s, background .15s; }
 .primary:hover { background: #a94e27; transform: translateY(-1px); }
+.secondary { border: 1px solid #9fb3c3; border-radius: 10px; padding: 10px 14px; font-weight: 800; color: #243b53; background: #fff; cursor: pointer; }
+.secondary:hover { background: #f0f4f7; }
 .score { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: auto; padding-top: 18px; border-top: 1px solid #d9e2ec; text-align: center; }
 .score div { display: grid; gap: 2px; }
 .score strong { font-family: Georgia, serif; font-size: 1.5rem; }
@@ -31,9 +33,15 @@ select:focus, button:focus-visible, .intersection:focus-visible { outline: 3px s
 .board-area { min-width: 0; display: grid; justify-items: center; gap: 14px; }
 .status { min-height: 24px; font-weight: 800; color: #334e68; text-align: center; }
 .status.error { color: #b42318; }
+.opening-panel { width: min(660px, 100%); padding: 12px 14px; border: 1px solid #e0b89e; border-radius: 12px; background: #fff7ed; text-align: center; }
+.opening-panel[hidden] { display: none; }
+.opening-panel p { margin: 0 0 10px; color: #7c3e1d; font-weight: 750; }
+.opening-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .board { --cells: 15; width: min(660px, 100%); aspect-ratio: 1; display: grid; grid-template-columns: repeat(var(--cells), 1fr); grid-template-rows: repeat(var(--cells), 1fr); padding: 2.5%; border: 8px solid #8d572f; border-radius: 8px; background: #d7a75f; box-shadow: inset 0 0 0 2px #e5bd78, 0 12px 28px rgba(58,35,16,.22); }
 .intersection { position: relative; border: 0; padding: 0; background-color: transparent; background-image: linear-gradient(90deg, transparent calc(50% - .5px), rgba(83,47,19,.72) calc(50% - .5px), rgba(83,47,19,.72) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(transparent calc(50% - .5px), rgba(83,47,19,.72) calc(50% - .5px), rgba(83,47,19,.72) calc(50% + .5px), transparent calc(50% + .5px)); cursor: pointer; }
 .intersection.not-allowed { z-index: 3; cursor: not-allowed; border-radius: 4px; background-color: rgba(190, 35, 35, .2); box-shadow: inset 0 0 0 3px rgba(190, 35, 35, .88), 0 0 8px rgba(190, 35, 35, .55); }
+.intersection.proposal::before { content: ""; position: absolute; z-index: 2; width: 46%; aspect-ratio: 1; left: 50%; top: 50%; translate: -50% -50%; border-radius: 50%; border: 3px solid #236e78; background: rgba(255,255,255,.5); box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+.intersection.proposal:hover::before, .intersection.proposal:focus-visible::before { background: #5fb3b3; }
 .intersection::after { content: ""; position: absolute; width: 76%; aspect-ratio: 1; left: 50%; top: 50%; translate: -50% -50%; border-radius: 50%; opacity: 0; transform: scale(.5); transition: opacity .12s, transform .12s; }
 .intersection.black::after, .intersection.white::after { opacity: 1; transform: scale(1); }
 .intersection.black::after { background: radial-gradient(circle at 33% 28%, #59636a 0, #182126 45%, #050809 100%); box-shadow: 1px 3px 5px rgba(0,0,0,.45); }
